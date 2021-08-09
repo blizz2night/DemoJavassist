@@ -1,0 +1,2 @@
+rootProject.name = "MyPluginJavassist"
+include ':app'

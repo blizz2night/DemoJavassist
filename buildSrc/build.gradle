@@ -1,0 +1,30 @@
+//use java library
+//apply plugin: 'java-library'
+//use groovy library
+apply plugin: 'groovy'
+apply plugin: 'maven'
+repositories {
+    google()
+    jcenter()
+    mavenCentral()
+}
+dependencies {
+    implementation gradleApi()
+    implementation localGroovy()
+    implementation 'com.android.tools.build:gradle:4.2.1'
+    implementation 'org.javassist:javassist:3.28.0-GA'
+}
+
+sourceSets {
+    main{
+      groovy{
+            srcDir 'src/main/groovy'
+        }
+        java{
+            srcDir 'src/main/java'
+        }
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
+}
