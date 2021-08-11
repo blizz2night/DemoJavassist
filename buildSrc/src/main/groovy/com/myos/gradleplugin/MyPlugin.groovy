@@ -1,15 +1,12 @@
 package com.myos.gradleplugin
 
-import com.android.build.api.transform.Context
-import com.android.build.api.transform.DirectoryInput
+
 import com.android.build.api.transform.Format
-import com.android.build.api.transform.JarInput
 import com.android.build.api.transform.QualifiedContent
 import com.android.build.api.transform.Transform
 import com.android.build.api.transform.TransformException
 import com.android.build.api.transform.TransformInput
 import com.android.build.api.transform.TransformInvocation
-import com.android.build.api.transform.TransformOutputProvider
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.internal.pipeline.TransformManager
 import javassist.ClassPool
@@ -42,7 +39,7 @@ class MyTransform extends Transform {
 
     @Override
     String getName() {
-        return "logtransform"
+        return "MyTransfrom"
     }
 
     @Override
@@ -62,7 +59,7 @@ class MyTransform extends Transform {
 
     @Override
     void transform(TransformInvocation transformInvocation) throws TransformException, InterruptedException, IOException {
-        println '--------------------transform 开始-------------------'
+        println '--------------------transform begin-------------------'
 
         // Transform的inputs有两种类型，一种是目录，一种是jar包，要分开遍历
         def inputs = transformInvocation.inputs
@@ -74,7 +71,7 @@ class MyTransform extends Transform {
                 input.directoryInputs.each {
                     directoryInput ->
                         // 注入代码
-                        MyInjectByJavassit.injectToast(directoryInput.file.absolutePath, mProject)
+                        MyInjectByJavassist.injectToast(directoryInput.file.absolutePath, mProject)
                         println("directory input dest: $directoryInput.file.path")
                         // 获取输出目录
                         def dest = outputProvider.getContentLocation(directoryInput.name,
@@ -85,31 +82,31 @@ class MyTransform extends Transform {
                         FileUtils.copyDirectory(directoryInput.file, dest)
                 }
 
-                //对类型为jar文件的input进行遍历
-                input.jarInputs.each {
-                        //jar文件一般是第三方依赖库jar文件
-                    jarInput ->
-                        // 重命名输出文件（同目录copyFile会冲突）
-                        def jarName = jarInput.name
-                        println("jar: $jarInput.file.absolutePath")
-                        def md5Name = DigestUtils.md5Hex(jarInput.file.absolutePath)
-                        if (jarName.endsWith('.jar')) {
-                            jarName = jarName.substring(0, jarName.length() - 4)
-                        }
-                        def dest = outputProvider.getContentLocation(jarName + md5Name, jarInput.contentTypes, jarInput.scopes, Format.JAR)
-
-//                        println("jar output dest: $dest.absolutePath")
-                        FileUtils.copyFile(jarInput.file, dest)
-                }
+//                //对类型为jar文件的input进行遍历
+//                input.jarInputs.each {
+//                        //jar文件一般是第三方依赖库jar文件
+//                    jarInput ->
+//                        // 重命名输出文件（同目录copyFile会冲突）
+//                        def jarName = jarInput.name
+//                        println("jar: $jarInput.file.absolutePath")
+//                        def md5Name = DigestUtils.md5Hex(jarInput.file.absolutePath)
+//                        if (jarName.endsWith('.jar')) {
+//                            jarName = jarName.substring(0, jarName.length() - 4)
+//                        }
+//                        def dest = outputProvider.getContentLocation(jarName + md5Name, jarInput.contentTypes, jarInput.scopes, Format.JAR)
+//
+////                        println("jar output dest: $dest.absolutePath")
+//                        FileUtils.copyFile(jarInput.file, dest)
+//                }
         }
 
-        println '---------------------transform 结束-------------------'
+        println '---------------------transform end-------------------'
     }
 }
 ///**
-// * 借助 Javassit 操作 Class 文件
+// * 借助 Javassist 操作 Class 文件
 // */
-class MyInjectByJavassit {
+class MyInjectByJavassist {
 
     private static final ClassPool sClassPool = ClassPool.getDefault()
 
