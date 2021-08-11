@@ -14,7 +14,9 @@ import com.android.build.gradle.AppExtension
 import com.android.build.gradle.internal.pipeline.TransformManager
 import javassist.ClassPool
 import javassist.CtClass
+import javassist.CtField
 import javassist.CtMethod
+import javassist.NotFoundException
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
 import org.gradle.api.Plugin;
@@ -127,37 +129,61 @@ class MyInjectByJavassit {
         File dir = new File(path)
         if (dir.isDirectory()) {
             // 遍历文件夹
-            dir.eachFileRecurse { File file ->
+            dir.eachFileRecurse { file ->
                 String filePath = file.absolutePath
                 println("filePath: $filePath")
-                def packageName = dir.relativePath(file).replace('/', '.')
-                def index = packageName.lastIndexOf('.class')
-                println "packageName=$packageName"
 
-                if (file.name == 'MainActivity.class') {
-                    // 获取Class
-                    // 这里的MainActivity就在app模块里
-                    CtClass ctClass = sClassPool.getCtClass("com.github.blizz2night.mypluginjavassist.MainActivity")
-                    println("ctClass: $ctClass")
-
-                    // 解冻
-                    if (ctClass.isFrozen()) {
-                        ctClass.defrost()
+                if (file.isFile()) {
+                    def packageName = dir.relativePath(file).replace('/', '.')
+                    def index = packageName.lastIndexOf('.class')
+                    if (index >= 0) {
+                        packageName = packageName.substring(0, index)
+                        println "packageName=$packageName"
+                        CtClass ctClass = sClassPool.getCtClass(packageName)
+                        if (ctClass.isFrozen()) {
+                            ctClass.defrost()
+                        }
+                        println("ctClass: $ctClass")
+                        modifyTag(ctClass, file)
+                        injectToastToActivity(ctClass, file)
+                        ctClass.writeFile(path)
+                        ctClass.detach() //释放
                     }
 
-                    // 获取Method
-                    CtMethod ctMethod = ctClass.getDeclaredMethod('onCreate')
-                    println("ctMethod: $ctMethod")
-
-                    String toastStr = """ android.widget.Toast.makeText(this,"我是被插入的Toast代码~!!",android.widget.Toast.LENGTH_SHORT).show();
-                                      """
-
-                    // 方法尾插入
-                    ctMethod.insertAfter(toastStr)
-                    ctClass.writeFile(path)
-                    ctClass.detach() //释放
                 }
+
             }
+        }
+    }
+
+
+    protected static void modifyTag(CtClass ctClass, File file) {
+        // 获取Class
+        // 这里的MainActivity就在app模块里
+        try {
+            CtField tagField = ctClass.getField("TAG")
+            // 解冻
+
+            def value = tagField.getConstantValue()
+            value = 'CAMap_'+value
+            ctClass.removeField(tagField)
+            ctClass.addField(tagField,"\"$value\"")
+        }catch(NotFoundException e){
+            println e
+        }
+
+    }
+
+    protected static void injectToastToActivity(CtClass ctClass, File file) {
+        if (file.name == 'MainActivity.class') {
+            // 获取Method
+            CtMethod ctMethod = ctClass.getDeclaredMethod('onCreate')
+            println("ctMethod: $ctMethod")
+
+            String toastStr = """ android.widget.Toast.makeText(this,"我是被插入的Toast代码~!!",android.widget.Toast.LENGTH_SHORT).show();
+                                      """
+            // 方法尾插入
+            ctMethod.insertAfter(toastStr)
         }
     }
 
